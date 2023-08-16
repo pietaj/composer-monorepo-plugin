@@ -39,11 +39,11 @@ class MonorepoInstalledRepository implements InstalledRepositoryInterface
      * Searches for the first match of a package by name and version.
      *
      * @param string $name    package name
-     * @param string $version package version
+     * @param ConstraintInterface|string $constraint package version
      *
      * @return PackageInterface|null
      */
-    public function findPackage($name, $version)
+    public function findPackage(string $name, $constraint)
     {
         if (isset($this->packages[$name])) {
             return $this->packages[$name];
@@ -59,12 +59,12 @@ class MonorepoInstalledRepository implements InstalledRepositoryInterface
      *
      * @return array
      */
-    public function findPackages($name, $version = null)
+    public function findPackages($name, $version = null): array
     {
-        return array();
+        return [];
     }
 
-    public function getProviders($packageName)
+    public function getProviders($packageName): array
     {
         return [];
     }
@@ -105,7 +105,7 @@ class MonorepoInstalledRepository implements InstalledRepositoryInterface
         return array();
     }
 
-    public function count()
+    public function count(): int
     {
         return count($this->packages);
     }
@@ -113,7 +113,7 @@ class MonorepoInstalledRepository implements InstalledRepositoryInterface
     /**
      * Writes repository (f.e. to the disc).
      */
-    public function write($devMode, InstallationManager $installationManager)
+    public function write(bool $devMode, InstallationManager $installationManager)
     {
     }
 
@@ -153,7 +153,7 @@ class MonorepoInstalledRepository implements InstalledRepositoryInterface
     public function reload()
     {
     }
-    
+
     /**
       * @return string[]
       */
