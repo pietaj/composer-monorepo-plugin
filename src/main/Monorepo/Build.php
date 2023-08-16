@@ -13,6 +13,7 @@
 
 namespace Monorepo;
 
+use Composer\Util\Platform;
 use Monorepo\Composer\MonorepoInstalledRepository;
 use Monorepo\Composer\MonorepoInstaller;
 use Monorepo\Composer\EventDispatcher;
@@ -34,7 +35,7 @@ use Composer\Util\Filesystem;
  * The build step is very simple and consists of generating a
  * `vendor/autoload.php` file similar to how Composer generates it.
  *
- * Prototype at Monorepo funtionality. No change detection yet.
+ * Prototype at Monorepo functionality. No change detection yet.
  */
 class Build
 {
@@ -106,13 +107,21 @@ class Build
             foreach ($localRepo->getPackages() as $package) {
                 foreach ($package->getBinaries() as $binary) {
                     $binFile = $binDir . '/' . basename($binary);
-
+                    $targetBin = $rootDirectory . '/' . $binary;
                     if (file_exists($binFile)) {
                         $this->io->write(sprintf('Skipped installation of ' . $binFile . ' for package ' . $packageName . ': name conflicts with an existing file'));
                         continue;
                     }
 
-                    $fsUtil->relativeSymlink($rootDirectory . '/' . $binary, $binFile);
+                    if (Platform::isWindows()) {
+                        // Windows symlink
+                        if (function_exists('symlink')) {
+                            @symlink($targetBin, $binFile);
+                        }
+                    } else {
+                        // UNIX symlink
+                        $fsUtil->relativeSymlink($targetBin, $binFile);
+                    }
                 }
             }
 
@@ -156,9 +165,9 @@ class Build
                 if ($dependencyName == $vendorDir . '/composer-plugin-api' || $dependencyName == $vendorDir . '/composer-runtime-api') {
                     continue;
                 }
-                if($isVendor){
+                if($isVendor) {
                     throw new \RuntimeException("Requiring non-existent composer-package '" . $dependencyName . "' in '" . $packageName . "'. Please ensure it is present in composer.json.");
-                }else{
+                } else {
                     throw new \RuntimeException("Requiring non-existent repo-module '" . $dependencyName . "' in '" . $packageName . "'. Please check that the subdirectory exists, or prepend \"" . $vendorDir . "/\" to reference a composer-package.");
                 }
 
@@ -215,8 +224,8 @@ class Build
         foreach ($finder as $file) {
             $monorepoJson = $this->loadMonorepoJson($file->getContents(), $file->getPath());
 
-            if ($monorepoJson === NULL) {
-                throw new \RuntimeException("Invalid " . $file->getRelativePath() . '/monorepo.json file.');
+            if ($monorepoJson === null) {
+                throw new \RuntimeException("Invalid " . $file->getRelativePath() . DIRECTORY_SEPARATOR . 'monorepo.json file.');
             }
 
             $monorepoJson['path'] = $file->getRelativePath();
@@ -237,11 +246,11 @@ class Build
                 $monorepoJson['include-path'] = array();
             }
 
-            $packages[$file->getRelativePath()] = $monorepoJson;
+            $packages[str_replace(DIRECTORY_SEPARATOR, '/', $file->getRelativePath())] = $monorepoJson;
 
             if (isset($monorepoJson['replace'])) {
                 foreach ($monorepoJson['replace'] as $replaceName => $_) {
-                    $packages[$vendorDir . '/' . $replaceName] = $monorepoJson;
+                    $packages[str_replace(DIRECTORY_SEPARATOR, '/', $file->getRelativePath())] = $monorepoJson;
                 }
             }
         }
@@ -260,7 +269,7 @@ class Build
         if (file_exists($installedJsonFile)) {
             $installed = json_decode(file_get_contents($installedJsonFile), true);
 
-            if ($installed === NULL) {
+            if ($installed === null) {
                 throw new \RuntimeException("Invalid installed.json file at " . dirname($installedJsonFile));
             }
 
